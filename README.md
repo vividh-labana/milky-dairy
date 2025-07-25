@@ -54,4 +54,4 @@ This is the backend service for the Milky Dairy application. It provides APIs fo
 - `GET /getTransactionDetails`: Get transaction details for a seller
 
 ## License
-This project is licensed under the MIT License.
+This project is not licensed.
