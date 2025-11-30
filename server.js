@@ -331,7 +331,7 @@ app.post('/login', async (req, res) => {
 
 // Add an endpoint to insert data into the milk_info table
 // RBAC: Buyer only - buyers add milk entries for their sellers
-app.post('/addMilkInfo', authenticateToken, requireBuyer, (req, res) => {
+app.post('/addMilkInfo', authenticateToken, requireBuyer, async (req, res) => {
     const { seller_id, buyer_id, date, milk_in_litres, fat, shift } = req.body;
 
     // Validate required fields
@@ -356,20 +356,90 @@ app.post('/addMilkInfo', authenticateToken, requireBuyer, (req, res) => {
         return res.status(400).json({ message: 'Milk quantity must be greater than 0' });
     }
 
-    const insertMilkInfoQuery = `
-    INSERT INTO milk_info (seller_id, buyer_id, date, milk_in_litres, fat, shift)
-    VALUES ($1, $2, $3, $4, $5, $6)
-    RETURNING *;
-    `;
-
-    pool.query(insertMilkInfoQuery, [seller_id, buyer_id, date, milk_in_litres, fat, shift], (err, result) => {
-        if (err) {
-            console.error('Error inserting milk info data:', err);
-            res.status(500).send('Error inserting milk info data');
-        } else {
-            res.status(201).json({ message: 'Milk info data inserted successfully', data: result.rows[0] });
+    try {
+        // Check if entry already exists for this date, shift, seller, and buyer
+        const checkQuery = `
+            SELECT id FROM milk_info 
+            WHERE seller_id = $1 AND buyer_id = $2 AND date = $3 AND shift = $4;
+        `;
+        const existing = await pool.query(checkQuery, [seller_id, buyer_id, date, shift]);
+        
+        if (existing.rows.length > 0) {
+            return res.status(409).json({ 
+                message: `Entry already exists for ${date} (${shift} shift). Please edit the existing entry instead.`,
+                existingId: existing.rows[0].id
+            });
         }
-    });
+
+        const insertMilkInfoQuery = `
+            INSERT INTO milk_info (seller_id, buyer_id, date, milk_in_litres, fat, shift)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            RETURNING *;
+        `;
+
+        const result = await pool.query(insertMilkInfoQuery, [seller_id, buyer_id, date, milk_in_litres, fat, shift]);
+        res.status(201).json({ message: 'Milk info data inserted successfully', data: result.rows[0] });
+    } catch (err) {
+        console.error('Error inserting milk info data:', err);
+        res.status(500).json({ message: 'Error inserting milk info data' });
+    }
+});
+
+// Update milk info entry
+app.put('/updateMilkInfo/:id', authenticateToken, requireBuyer, async (req, res) => {
+    const { id } = req.params;
+    const { seller_id, buyer_id, date, milk_in_litres, fat, shift } = req.body;
+
+    // Validate required fields
+    if (!seller_id || !buyer_id || !date || milk_in_litres === undefined || fat === undefined || !shift) {
+        return res.status(400).json({ message: 'All fields are required' });
+    }
+
+    // Ownership check
+    if (parseInt(buyer_id) !== req.user.id) {
+        return res.status(403).json({ message: 'You can only update your own entries' });
+    }
+
+    if (!['morning', 'evening'].includes(shift)) {
+        return res.status(400).json({ message: 'Shift must be either "morning" or "evening"' });
+    }
+
+    if (fat < 0 || fat > 10) {
+        return res.status(400).json({ message: 'Fat must be between 0 and 10' });
+    }
+
+    if (milk_in_litres <= 0) {
+        return res.status(400).json({ message: 'Milk quantity must be greater than 0' });
+    }
+
+    try {
+        // Verify ownership of the entry
+        const checkOwnership = await pool.query(
+            'SELECT buyer_id FROM milk_info WHERE id = $1',
+            [id]
+        );
+
+        if (checkOwnership.rows.length === 0) {
+            return res.status(404).json({ message: 'Entry not found' });
+        }
+
+        if (checkOwnership.rows[0].buyer_id !== req.user.id) {
+            return res.status(403).json({ message: 'You can only update your own entries' });
+        }
+
+        const updateQuery = `
+            UPDATE milk_info 
+            SET date = $1, milk_in_litres = $2, fat = $3, shift = $4
+            WHERE id = $5
+            RETURNING *;
+        `;
+
+        const result = await pool.query(updateQuery, [date, milk_in_litres, fat, shift, id]);
+        res.status(200).json({ message: 'Entry updated successfully', data: result.rows[0] });
+    } catch (err) {
+        console.error('Error updating milk info:', err);
+        res.status(500).json({ message: 'Error updating entry' });
+    }
 });
 
 // Update the calculateAmount endpoint to remove SUM since each seller sells milk only once per shift per day
