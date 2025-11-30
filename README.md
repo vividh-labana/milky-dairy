@@ -1,57 +1,109 @@
 # Milky Dairy Backend
 
-## Description
-This is the backend service for the Milky Dairy application. It provides APIs for managing sellers, buyers, milk transactions, and authentication using JWT.
+A Node.js/Express backend API for the Milky Dairy management system - handling authentication, milk tracking, and transaction management between sellers and buyers.
 
 ## Features
-- Seller and Buyer management
-- Milk transaction tracking
-- Authentication and authorization using JWT
-- Token blacklisting for secure logout
 
-## Technologies Used
-- Node.js
-- Express.js
-- PostgreSQL
+- **JWT Authentication** - Secure login with token-based auth and logout via token blacklisting
+- **User Management** - Register as buyer or seller
+- **Seller-Buyer Mapping** - Associate sellers with buyers
+- **Milk Tracking** - Record daily milk entries (quantity, fat, shift)
+- **Transaction Management** - Calculate and record payments
 
-## Setup Instructions
-1. Clone the repository:
+## Tech Stack
+
+- Node.js + Express.js 5.1.0
+- PostgreSQL (Supabase)
+- JWT for authentication
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js (v16 or higher)
+- npm
+- Supabase account (free tier)
+
+### Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/vividh-labana/milky-dairy.git
+
+# Navigate to project directory
+cd milky-dairy
+
+# Install dependencies
+npm install
+```
+
+### Environment Setup
+
+1. Copy the example environment file:
    ```bash
-   git clone https://github.com/vividh-labana/milky-dairy.git
+   cp env.example .env
    ```
-2. Navigate to the project directory:
-   ```bash
-   cd milky-dairy-backend
+
+2. Edit `.env` and replace `YOUR-PASSWORD` with your Supabase database password:
+   ```env
+   DATABASE_URL="postgresql://postgres.exfqvkkassxypjycdpsw:YOUR_ACTUAL_PASSWORD@aws-1-ap-northeast-2.pooler.supabase.com:6543/postgres?pgbouncer=true"
+   JWT_SECRET=vividh_secret
+   PORT=3001
    ```
-3. Install dependencies:
-   ```bash
-   npm install
-   ```
-4. Configure the database connection in `server.js`.
-5. Start the server:
-   ```bash
-   node server.js
-   ```
+
+### Run the Server
+
+```bash
+node server.js
+```
+
+Server will start at `http://localhost:3001`
 
 ## API Endpoints
+
 ### Authentication
-- `POST /register`: Register a new user
-- `POST /login`: Login and receive a JWT token
-- `POST /logout`: Logout and blacklist the token
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/register` | Register new user |
+| POST | `/login` | Login and get JWT token |
+| POST | `/logout` | Logout and blacklist token |
+| GET | `/getUserInfo` | Get user details |
 
 ### Seller-Buyer Management
-- `POST /addSellerBuyerMapping`: Add or update seller-buyer mapping
-- `GET /getSellersByBuyer`: Get sellers associated with a buyer
-- `GET /getBuyerBySeller`: Get buyers associated with a seller
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/addSellerBuyerMapping` | Create/update seller-buyer relationship |
+| GET | `/getSellersByBuyer` | Get sellers for a buyer |
+| GET | `/getBuyerBySeller` | Get buyer for a seller |
+| GET | `/getBuyers` | List all buyers |
 
 ### Milk Info
-- `POST /addMilkInfo`: Add milk information
-- `GET /getMilkInfoBySeller`: Get milk information for a seller
-- `DELETE /deleteMilkInfo`: Delete milk information
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/addMilkInfo` | Add milk entry |
+| GET | `/getMilkInfoBySeller` | Get milk records for seller |
+| DELETE | `/deleteMilkInfo` | Delete milk entry |
 
 ### Transactions
-- `POST /addTransaction`: Add a transaction
-- `GET /getTransactionDetails`: Get transaction details for a seller
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/calculateAmount` | Calculate payment amount |
+| POST | `/addTransaction` | Record a transaction |
+| GET | `/getTransactionDetails` | Get transactions for seller |
+
+## Database Schema
+
+Tables are auto-created on server start:
+- `role` - User accounts
+- `seller_buyer_mapping` - Relationships
+- `milk_info` - Daily milk entries
+- `transaction` - Payment records
+- `blacklistToken` - Expired JWT tokens
+
+## Related
+
+- [Milky Dairy Frontend](https://github.com/vividh-labana/milky-dairy-frontend) - React frontend
 
 ## License
+
 This project is not licensed.
